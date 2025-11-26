@@ -1,4 +1,4 @@
-import pickle
+import joblib
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -46,9 +46,9 @@ def classification_report_message(model: str, metrics):
 # 1. Load model, medians, metrics
 # ----------------------------
 
-# To do other models
-with open("random_forest_model.pkl", "rb") as f:
-    random_forest_model = pickle.load(f)
+# Завантаження моделей
+random_forest_pipeline = joblib.load("random_forest_pipeline.joblib")
+# To do models
 
 # Завантаження медіан
 rf_median = None
@@ -59,6 +59,7 @@ with open("rf_medians.json", "r") as f:
 rf_metrics = None
 with open("rf_metrics.json", "r") as f:
     rf_metrics = json.load(f)
+# To do metrics
 
 st.title("📡 Прогнозування Відтоку Клієнтів для Телекомунікаційної компанії")
 st.write("Введіть параметри клієнта, щоб передбачити ймовірність відтоку.")
@@ -74,7 +75,7 @@ input_mode = st.radio(
 )
 
 if input_mode == "Прогноз для одного клієнта (ввід даних вручну)":
-    # --- Перший ряд ---
+    # Перший ряд
     cols1 = st.columns(5)
 
     with cols1[0]:
@@ -95,7 +96,7 @@ if input_mode == "Прогноз для одного клієнта (ввід д
             remaining_contract = rf_medians['remaining_contract_median']
 
 
-    # --- Другий ряд ---
+    # Другий ряд
     cols2 = st.columns(5)
 
     with cols2[0]:
@@ -104,7 +105,6 @@ if input_mode == "Прогноз для одного клієнта (ввід д
         # download_avg = st.number_input("Кількість завантаження (GB)", 0.0, 10000.0)
         raw_value_download_avg = st.text_input("Кількість завантаження (GB) (якщо є)")
         download_avg = convert_to_number_or_None(raw_value_download_avg)
-        download_avg_missing = 1 if download_avg is None else 0
         if download_avg is None:
             download_avg = rf_medians['download_median']
 
@@ -112,7 +112,6 @@ if input_mode == "Прогноз для одного клієнта (ввід д
         # upload_avg = st.number_input("Кількість вивантаження (GB)", 0.0, 10000.0)
         raw_value_upload_avg = st.text_input("Кількість вивантаження (GB) (якщо є)")
         upload_avg = convert_to_number_or_None(raw_value_upload_avg)
-        upload_avg_missing = 1 if upload_avg is None else 0
         if upload_avg is None:
             upload_avg = rf_medians['upload_median']
 
@@ -123,7 +122,17 @@ if input_mode == "Прогноз для одного клієнта (ввід д
 
 
 elif input_mode == "Прогноз для декількох (завантажити CSV файл)":
-    uploaded_file = st.file_uploader("Завантажте CSV файл", type=["csv"])
+    uploaded_file = st.file_uploader("Завантажте CSV файл з колонками "
+                                     "is_tv_subscriber,"
+                                     "is_movie_package_subscriber,"
+                                     "subscription_age,"
+                                     "bill_avg,"
+                                     "reamining_contract,"
+                                     "service_failure_count,"
+                                     "download_avg,upload_avg,"
+                                     "download_over_limit,"
+                                     "download_avg_missing,"
+                                     "upload_avg_missing", type=["csv"])
 
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
@@ -141,9 +150,7 @@ elif input_mode == "Прогноз для декількох (завантажи
             "service_failure_count",
             "download_avg",
             "upload_avg",
-            "download_over_limit",
-            "download_avg_missing",
-            "upload_avg_missing"
+            "download_over_limit"
         ]
 
         missing = [c for c in required_cols if c not in df.columns]
@@ -156,37 +163,36 @@ elif input_mode == "Прогноз для декількох (завантажи
 # 3. Prediction
 # ----------------------------------------
 
-# ---- Випадаюче меню для вибору моделі ----
+# Випадаюче меню для вибору моделі
 model_name = st.selectbox(
     "Оберіть будь-яку модель для передбачення:",
     ['Random Forest', 'SVM', 'Нейронна мережа']
 )
 
+
 if st.button("Передбачити відтік"):
     if input_mode == 'Прогноз для одного клієнта (ввід даних вручну)':
+        # Формуємо вхідні дані
+        X = np.array([[
+            is_tv_subscriber,
+            is_movie_package_subscriber,
+            subscription_age,
+            bill_avg,
+            remaining_contract,
+            service_failure_count,
+            download_avg,
+            upload_avg,
+            download_over_limit
+        ]], dtype=float)
+
+        st.subheader("Вхідні дані:")
+        st.write(X)
+
         if model_name == 'Random Forest':
             classification_report_message(model_name, rf_metrics)
 
-            # Prepare input
-            X = np.array([[
-                is_tv_subscriber,
-                is_movie_package_subscriber,
-                subscription_age,
-                bill_avg,
-                remaining_contract,
-                service_failure_count,
-                download_avg,
-                upload_avg,
-                download_over_limit,
-                download_avg_missing,
-                upload_avg_missing
-            ]], dtype=float)
-
-            st.subheader("Вхідні дані:")
-            st.write(X)
-
-            # Predict
-            pred = random_forest_model.predict_proba(X)[0][1] * 100
+            # Передбачення
+            probability = random_forest_pipeline.predict_proba(X)[0][1] * 100
 
         elif model_name == 'SVM':
             # To do
@@ -196,14 +202,15 @@ if st.button("Передбачити відтік"):
             # To do
             pass
 
+        # Відображення результату
         cols = st.columns(2)
 
         with cols[0]:
             st.subheader("Передбачення:")
-            st.markdown(f"💔 **Ймовірність, що клієнт піде: {pred:.2f}%**")
-            st.markdown(f"👍 **Ймовірність, що клієнт залишиться: {100-pred:.2f}%**")
+            st.markdown(f"💔 **Ймовірність, що клієнт піде: {probability:.2f}%**")
+            st.markdown(f"👍 **Ймовірність, що клієнт залишиться: {100-probability:.2f}%**")
 
-            if pred > 50:
+            if probability > 50:
                 st.error("⚠️ Клієнт з високою ймовірністю піде.")
             else:
                 st.success("✅ Клієнт, скоріш за все, залишиться.")
@@ -211,15 +218,15 @@ if st.button("Передбачити відтік"):
         # Візуалізація
         with cols[1]:
             fig, ax = plt.subplots(figsize=(6, 3))
-            ax.bar(["Клієнт піде"], [pred])
-            ax.bar(["Клієнт залишиться"], [100-pred])
+            ax.bar(["Клієнт піде"], [probability])
+            ax.bar(["Клієнт залишиться"], [100-probability])
             ax.set_ylim(0, 100)
             st.pyplot(fig)
 
 
     elif input_mode == "Прогноз для декількох (завантажити CSV файл)":
         if model_name == 'Random Forest':
-            preds = random_forest_model.predict_proba(df[required_cols])[:, 1] * 100
+            probabilities = random_forest_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'SVM':
             # To do
@@ -229,7 +236,17 @@ if st.button("Передбачити відтік"):
             # To do
             pass
 
-        df["churn_probability"] = preds
+        df["churn_probability"] = probabilities
+        df["churn_prediction"] = pd.cut(
+            df["churn_probability"],
+            bins=[0, 40, 70, 100],
+            labels=[
+                "Клієнт залишиться",
+                "Середній ризик відтоку",
+                "Високий ризик відтоку"
+            ],
+            include_lowest=True
+        )
 
         st.success("Готово!")
         st.dataframe(df)
