@@ -226,6 +226,8 @@ if st.button("Передбачити відтік"):
 
     elif input_mode == "Прогноз для декількох (завантажити CSV файл)":
         if model_name == 'Random Forest':
+            classification_report_message(model_name, rf_metrics)
+
             probabilities = random_forest_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'SVM':
