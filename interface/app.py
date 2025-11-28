@@ -47,19 +47,39 @@ def classification_report_message(model: str, metrics):
 # ----------------------------
 
 # Завантаження моделей
+# Random Forest model
 random_forest_pipeline = joblib.load("random_forest_pipeline.joblib")
-# To do models
+
+#SVM model
+svm_pipeline = joblib.load("churn_svm_model.pkl")
+
+#To do models
 
 # Завантаження медіан
+# Random Forest medians
 rf_median = None
 with open("rf_medians.json", "r") as f:
     rf_medians = json.load(f)
 
-# Завантаження метрик
+# SVM medians
+rf_median = None
+with open("svm_medians.json", "r") as f:
+    rf_medians = json.load(f)
+
+# To do medians
+
+#Завантаження метрик
+# Random Forest metrics
 rf_metrics = None
 with open("rf_metrics.json", "r") as f:
     rf_metrics = json.load(f)
-# To do metrics
+
+# SVM metrics
+rf_metrics = None
+with open("svm_metrics.json", "r") as f:
+    rf_metrics = json.load(f)
+
+#To do metrics
 
 st.title("📡 Прогнозування Відтоку Клієнтів для Телекомунікаційної компанії")
 st.write("Введіть параметри клієнта, щоб передбачити ймовірність відтоку.")
@@ -190,14 +210,14 @@ if st.button("Передбачити відтік"):
 
         if model_name == 'Random Forest':
             classification_report_message(model_name, rf_metrics)
-
-            # Передбачення
+            #Передбачення
             probability = random_forest_pipeline.predict_proba(X)[0][1] * 100
 
         elif model_name == 'SVM':
-            # To do
-            pass
+            classification_report_message(model_name, rf_metrics)
 
+            probability = svm_pipeline.predict_proba(X)[0][1] * 100
+            
         elif model_name == 'Нейронна мережа':
             # To do
             pass
@@ -231,8 +251,9 @@ if st.button("Передбачити відтік"):
             probabilities = random_forest_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'SVM':
-            # To do
-            pass
+            classification_report_message(model_name, rf_metrics)
+            
+            probabilities = svm_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'Нейронна мережа':
             # To do
