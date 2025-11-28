@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  churn-app:
+    build: .
+    container_name: churn-app
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - churn-net
+
+networks:
+  churn-net:
