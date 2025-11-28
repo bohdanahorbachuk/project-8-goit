@@ -62,9 +62,9 @@ with open("rf_medians.json", "r") as f:
     rf_medians = json.load(f)
 
 # SVM medians
-rf_median = None
+svm_medians = None
 with open("svm_medians.json", "r") as f:
-    rf_medians = json.load(f)
+    svm_medians = json.load(f)
 
 # To do medians
 
@@ -75,9 +75,9 @@ with open("rf_metrics.json", "r") as f:
     rf_metrics = json.load(f)
 
 # SVM metrics
-rf_metrics = None
+svm_metrics = None
 with open("svm_metrics.json", "r") as f:
-    rf_metrics = json.load(f)
+    svm_metrics = json.load(f)
 
 #To do metrics
 
@@ -214,7 +214,7 @@ if st.button("Передбачити відтік"):
             probability = random_forest_pipeline.predict_proba(X)[0][1] * 100
 
         elif model_name == 'SVM':
-            classification_report_message(model_name, rf_metrics)
+            classification_report_message(model_name, svm_metrics)
 
             probability = svm_pipeline.predict_proba(X)[0][1] * 100
             
@@ -251,7 +251,7 @@ if st.button("Передбачити відтік"):
             probabilities = random_forest_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'SVM':
-            classification_report_message(model_name, rf_metrics)
+            classification_report_message(model_name, svm_metrics)
             
             probabilities = svm_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
