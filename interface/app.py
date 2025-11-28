@@ -50,11 +50,15 @@ def classification_report_message(model: str, metrics):
 # Завантаження моделей
 # Random Forest model
 random_forest_pipeline = joblib.load("random_forest_pipeline.joblib")
-nn_model = load_model("churn_NNmodel.keras")
-nn_scaler = joblib.load("scalerNN.pkl")
 
 #SVM model
 svm_pipeline = joblib.load("churn_svm_model.pkl")
+
+# Neural Network model
+nn_model = load_model("churn_NNmodel.keras")
+nn_scaler = joblib.load("scalerNN.pkl")
+with open("feature_namesNN.json", "r") as f:
+    nn_feature_names = json.load(f)
 
 #To do models
 
@@ -77,17 +81,14 @@ rf_metrics = None
 with open("rf_metrics.json", "r") as f:
     rf_metrics = json.load(f)
 
-nn_feature_names = None
-with open("feature_namesNN.json", "r") as f:
-    nn_feature_names = json.load(f)
-
-
 # SVM metrics
 svm_metrics = None
 with open("svm_metrics.json", "r") as f:
     svm_metrics = json.load(f)
 
-#To do metrics
+# Neural Network metrics
+with open("nn_metrics.json", "r") as f:
+    nn_metrics = json.load(f)
 
 st.title("📡 Прогнозування Відтоку Клієнтів для Телекомунікаційної компанії")
 st.write("Введіть параметри клієнта, щоб передбачити ймовірність відтоку.")
@@ -227,37 +228,29 @@ if st.button("Передбачити відтік"):
             probability = svm_pipeline.predict_proba(X)[0][1] * 100
 
         elif model_name == 'Нейронна мережа':
-            # Формуємо вхід під NN з урахуванням nn_feature_names
-            nn_input = {}
+            if nn_metrics:
+                classification_report_message(model_name, nn_metrics)
 
-            if "is_tv_subscriber" in nn_feature_names:
-                nn_input["is_tv_subscriber"] = is_tv_subscriber
-            if "is_movie_package_subscriber" in nn_feature_names:
-                nn_input["is_movie_package_subscriber"] = is_movie_package_subscriber
-            if "subscription_age" in nn_feature_names:
-                nn_input["subscription_age"] = subscription_age
-            if "bill_avg" in nn_feature_names:
-                nn_input["bill_avg"] = bill_avg
-            if "reamining_contract" in nn_feature_names:
-                nn_input["reamining_contract"] = remaining_contract
-            if "service_failure_count" in nn_feature_names:
-                nn_input["service_failure_count"] = service_failure_count
-            if "download_avg" in nn_feature_names:
-                nn_input["download_avg"] = download_avg
-            if "upload_avg" in nn_feature_names:
-                nn_input["upload_avg"] = upload_avg
-            if "download_over_limit" in nn_feature_names:
-                nn_input["download_over_limit"] = download_over_limit
+                # Формуємо вхід саме під NN: словник з назвами ознак
+            nn_input = {
+                "is_tv_subscriber": is_tv_subscriber,
+                "is_movie_package_subscriber": is_movie_package_subscriber,
+                "subscription_age": subscription_age,
+                "bill_avg": bill_avg,
+                "reamining_contract": remaining_contract,
+                "service_failure_count": service_failure_count,
+                "download_avg": download_avg,
+                "upload_avg": upload_avg,
+                "download_over_limit": download_over_limit,
+            }
 
-            nn_row = pd.DataFrame(
-                [[nn_input[col] for col in nn_feature_names]],
-                columns=nn_feature_names,
-            )
+            # DataFrame в правильному порядку колонок
+            nn_df = pd.DataFrame([[nn_input[col] for col in nn_feature_names]], columns=nn_feature_names)
 
             # Масштабування
-            nn_scaled = nn_scaler.transform(nn_row)
+            nn_scaled = nn_scaler.transform(nn_df)
 
-            # Передбачення нейромережі
+            # Передбачення нейромережі (ймовірність класу "1" – клієнт піде)
             nn_proba = nn_model.predict(nn_scaled)[0][0]
             probability = nn_proba * 100
 
@@ -295,13 +288,18 @@ if st.button("Передбачити відтік"):
             probabilities = svm_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'Нейронна мережа':
-            # Перевіряємо, що всі ознаки, потрібні NN, є
+            if nn_metrics:
+                classification_report_message(model_name, nn_metrics)
+
+                # Перевіряємо, що всі фічі для NN є в датафреймі
             missing_nn = [c for c in nn_feature_names if c not in df.columns]
             if missing_nn:
                 st.error(f"❌ Відсутні колонки для нейромережі: {missing_nn}")
                 st.stop()
 
             nn_df = df[nn_feature_names].copy()
+
+            # Якщо в даних є пропуски – можна підставити медіани з RF або окремі для NN
             nn_df = nn_df.fillna(nn_df.median(numeric_only=True))
 
             nn_scaled = nn_scaler.transform(nn_df)
