@@ -48,16 +48,31 @@ def classification_report_message(model: str, metrics):
 # ----------------------------
 
 # Завантаження моделей
+# Random Forest model
 random_forest_pipeline = joblib.load("random_forest_pipeline.joblib")
 nn_model = load_model("churn_NNmodel.keras")
 nn_scaler = joblib.load("scalerNN.pkl")
 
+#SVM model
+svm_pipeline = joblib.load("churn_svm_model.pkl")
+
+#To do models
+
 # Завантаження медіан
+# Random Forest medians
 rf_median = None
 with open("rf_medians.json", "r") as f:
     rf_medians = json.load(f)
 
-# Завантаження метрик
+# SVM medians
+svm_medians = None
+with open("svm_medians.json", "r") as f:
+    svm_medians = json.load(f)
+
+# To do medians
+
+#Завантаження метрик
+# Random Forest metrics
 rf_metrics = None
 with open("rf_metrics.json", "r") as f:
     rf_metrics = json.load(f)
@@ -66,6 +81,13 @@ nn_feature_names = None
 with open("feature_namesNN.json", "r") as f:
     nn_feature_names = json.load(f)
 
+
+# SVM metrics
+svm_metrics = None
+with open("svm_metrics.json", "r") as f:
+    svm_metrics = json.load(f)
+
+#To do metrics
 
 st.title("📡 Прогнозування Відтоку Клієнтів для Телекомунікаційної компанії")
 st.write("Введіть параметри клієнта, щоб передбачити ймовірність відтоку.")
@@ -196,13 +218,13 @@ if st.button("Передбачити відтік"):
 
         if model_name == 'Random Forest':
             classification_report_message(model_name, rf_metrics)
-
-            # Передбачення
+            #Передбачення
             probability = random_forest_pipeline.predict_proba(X)[0][1] * 100
 
         elif model_name == 'SVM':
-            # To do
-            pass
+            classification_report_message(model_name, svm_metrics)
+
+            probability = svm_pipeline.predict_proba(X)[0][1] * 100
 
         elif model_name == 'Нейронна мережа':
             # Формуємо вхід під NN з урахуванням nn_feature_names
@@ -263,11 +285,14 @@ if st.button("Передбачити відтік"):
 
     elif input_mode == "Прогноз для декількох (завантажити CSV файл)":
         if model_name == 'Random Forest':
+            classification_report_message(model_name, rf_metrics)
+
             probabilities = random_forest_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'SVM':
-            # To do
-            pass
+            classification_report_message(model_name, svm_metrics)
+
+            probabilities = svm_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'Нейронна мережа':
             # Перевіряємо, що всі ознаки, потрібні NN, є
