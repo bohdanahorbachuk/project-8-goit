@@ -1,17 +1,15 @@
-version: "3.9"
-
 services:
   churn-app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: churn-app
     ports:
-      - "8501:8501"
-    volumes:
-      - .:/app
-    environment:
-      - PYTHONUNBUFFERED=1
+      - "8505:8501"
+    restart: unless-stopped
     networks:
       - churn-net
 
 networks:
   churn-net:
+    driver: bridge
