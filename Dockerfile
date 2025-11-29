@@ -1,21 +1,12 @@
-FROM python:3.10-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+FROM tensorflow/tensorflow:2.16.2
 
 WORKDIR /app
 
-# Dependencies
 COPY interface/requirements.txt ./requirements.txt
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-    && pip install --no-cache-dir -r requirements.txt \
-    && apt-get purge -y build-essential \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --ignore-installed blinker -r requirements.txt
 
-# Code
 COPY . .
 
 WORKDIR /app/interface

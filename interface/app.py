@@ -87,8 +87,11 @@ with open("svm_metrics.json", "r") as f:
     svm_metrics = json.load(f)
 
 # Neural Network metrics
-with open("nn_metrics.json", "r") as f:
-    nn_metrics = json.load(f)
+try:
+    with open("nn_metrics.json", "r") as f:
+        nn_metrics = json.load(f)
+except FileNotFoundError:
+    nn_metrics = None
 
 st.title("📡 Прогнозування Відтоку Клієнтів для Телекомунікаційної компанії")
 st.write("Введіть параметри клієнта, щоб передбачити ймовірність відтоку.")
@@ -228,11 +231,7 @@ if st.button("Передбачити відтік"):
             probability = svm_pipeline.predict_proba(X)[0][1] * 100
 
         elif model_name == 'Нейронна мережа':
-            if nn_metrics:
-                classification_report_message(model_name, nn_metrics)
-
-                # Формуємо вхід саме під NN: словник з назвами ознак
-            nn_input = {
+            nn_row_dict = {
                 "is_tv_subscriber": is_tv_subscriber,
                 "is_movie_package_subscriber": is_movie_package_subscriber,
                 "subscription_age": subscription_age,
@@ -244,15 +243,18 @@ if st.button("Передбачити відтік"):
                 "download_over_limit": download_over_limit,
             }
 
-            # DataFrame в правильному порядку колонок
-            nn_df = pd.DataFrame([[nn_input[col] for col in nn_feature_names]], columns=nn_feature_names)
+            nn_row = pd.DataFrame(
+                [[nn_row_dict[col] for col in nn_feature_names]],
+                columns=nn_feature_names,
+            )
 
-            # Масштабування
-            nn_scaled = nn_scaler.transform(nn_df)
+            nn_row_scaled = nn_scaler.transform(nn_row)
 
-            # Передбачення нейромережі (ймовірність класу "1" – клієнт піде)
-            nn_proba = nn_model.predict(nn_scaled)[0][0]
-            probability = nn_proba * 100
+            proba = float(nn_model.predict(nn_row_scaled)[0][0])
+            probability = proba * 100
+
+            if nn_metrics is not None:
+                classification_report_message(model_name, nn_metrics)
 
         # Відображення результату
         cols = st.columns(2)
@@ -288,24 +290,15 @@ if st.button("Передбачити відтік"):
             probabilities = svm_pipeline.predict_proba(df[required_cols])[:, 1] * 100
 
         elif model_name == 'Нейронна мережа':
-            if nn_metrics:
+            # Показуємо метрики, якщо вони є
+            if nn_metrics is not None:
                 classification_report_message(model_name, nn_metrics)
 
-                # Перевіряємо, що всі фічі для NN є в датафреймі
-            missing_nn = [c for c in nn_feature_names if c not in df.columns]
-            if missing_nn:
-                st.error(f"❌ Відсутні колонки для нейромережі: {missing_nn}")
-                st.stop()
+            nn_input = df[nn_feature_names]
 
-            nn_df = df[nn_feature_names].copy()
-
-            # Якщо в даних є пропуски – можна підставити медіани з RF або окремі для NN
-            nn_df = nn_df.fillna(nn_df.median(numeric_only=True))
-
-            nn_scaled = nn_scaler.transform(nn_df)
-            nn_proba = nn_model.predict(nn_scaled).ravel()
-            probabilities = nn_proba * 100
-
+            nn_scaled = nn_scaler.transform(nn_input)
+            proba_array = nn_model.predict(nn_scaled).ravel()
+            probabilities = proba_array * 100
 
         df["churn_probability"] = probabilities
         df["churn_prediction"] = pd.cut(
